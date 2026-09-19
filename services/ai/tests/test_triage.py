@@ -1,5 +1,11 @@
 from models import TriageRequest, Vitals
-from triage import triage_patient, get_triggered_rules, get_risk_factors
+from triage import (
+    triage_patient,
+    get_triggered_rules,
+    get_risk_factors,
+    compare_human_decision,
+    build_decision_comparison,
+)
 
 
 def test_primary_case():
@@ -106,3 +112,59 @@ def test_risk_factors():
     assert "fever" in risk_factors
     assert "cough" in risk_factors
     assert "elevated heart rate" in risk_factors
+
+def test_human_decision_override():
+    result = compare_human_decision(
+        ai_urgency="high",
+        ai_next_step="escalate",
+        human_urgency="medium",
+        human_next_step="teleconsult",
+    )
+
+    assert result["overridden"] is True
+    assert result["urgencyChanged"] is True
+    assert result["nextStepChanged"] is True
+
+def test_human_decision_no_override():
+    result = compare_human_decision(
+        ai_urgency="high",
+        ai_next_step="escalate",
+        human_urgency="high",
+        human_next_step="escalate",
+    )
+
+    assert result["overridden"] is False
+    assert result["urgencyChanged"] is False
+    assert result["nextStepChanged"] is False
+
+
+def test_build_decision_comparison_with_override():
+    result = build_decision_comparison(
+        ai_urgency="high",
+        ai_next_step="escalate",
+        human_urgency="medium",
+        human_next_step="teleconsult",
+    )
+
+    assert result["aiDecision"]["urgency"] == "high"
+    assert result["aiDecision"]["nextStep"] == "escalate"
+
+    assert result["humanDecision"]["urgency"] == "medium"
+    assert result["humanDecision"]["nextStep"] == "teleconsult"
+
+    assert result["comparison"]["overridden"] is True
+    assert result["comparison"]["urgencyChanged"] is True
+    assert result["comparison"]["nextStepChanged"] is True
+
+
+def test_build_decision_comparison_without_override():
+    result = build_decision_comparison(
+        ai_urgency="high",
+        ai_next_step="escalate",
+        human_urgency="high",
+        human_next_step="escalate",
+    )
+
+    assert result["comparison"]["overridden"] is False
+    assert result["comparison"]["urgencyChanged"] is False
+    assert result["comparison"]["nextStepChanged"] is False

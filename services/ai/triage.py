@@ -134,3 +134,182 @@ def get_risk_factors(data):
         risk_factors.append("elevated heart rate")
 
     return risk_factors
+
+def get_uncertainty(data):
+    """Return a qualitative uncertainty level based on available input."""
+
+    missing = []
+
+    if data.vitals.tempC is None:
+        missing.append("tempC")
+
+    if data.vitals.spo2 is None:
+        missing.append("spo2")
+
+    if data.vitals.hr is None:
+        missing.append("hr")
+
+    # All required vital inputs available
+    if not missing:
+        return {
+            "level": "low",
+            "reason": "All supported vital inputs are available."
+        }
+
+    # Two or more vital inputs missing
+    if len(missing) >= 2:
+        return {
+            "level": "high",
+            "reason": "Multiple supported vital inputs are missing."
+        }
+
+    # One vital input missing
+    return {
+        "level": "medium",
+        "reason": "One supported vital input is missing."
+    }
+
+def compare_human_decision(
+    ai_urgency,
+    ai_next_step,
+    human_urgency,
+    human_next_step,
+):
+    """Compare human decision with the AI recommendation."""
+
+    urgency_changed = ai_urgency != human_urgency
+    next_step_changed = ai_next_step != human_next_step
+
+    return {
+        "overridden": urgency_changed or next_step_changed,
+        "urgencyChanged": urgency_changed,
+        "nextStepChanged": next_step_changed,
+    }
+
+def build_explanation(data, urgency):
+    """Build structured, visualization-friendly triage explanation."""
+
+    return {
+        "summary": generate_explanation_summary(data, urgency),
+        "triggeredRules": get_triggered_rules(data),
+        "riskFactors": get_risk_factors(data),
+    }
+
+def generate_explanation_summary(data, urgency):
+    """Generate a short summary for visualization."""
+
+    symptoms = {
+        symptom.lower().strip()
+        for symptom in data.symptoms
+    }
+
+    if urgency == "emergency":
+        if "unconscious" in symptoms:
+            return "Unconsciousness triggered the emergency recommendation."
+
+        if "active_bleeding" in symptoms:
+            return "Active bleeding triggered the emergency recommendation."
+
+        if data.vitals.spo2 is not None and data.vitals.spo2 < 90:
+            return "Very low oxygen saturation triggered the emergency recommendation."
+
+    if urgency == "high":
+        if (
+            "fever" in symptoms
+            and "breathing_difficulty" in symptoms
+        ):
+            return "Fever with breathing difficulty triggered the high-urgency recommendation."
+
+        if data.vitals.spo2 is not None and data.vitals.spo2 < 94:
+            return "Low oxygen saturation triggered the high-urgency recommendation."
+
+        if data.vitals.tempC is not None and data.vitals.tempC >= 39:
+            return "High temperature triggered the high-urgency recommendation."
+
+    if urgency == "medium":
+        if "fever" in symptoms:
+            return "Fever triggered the medium-urgency recommendation."
+
+        if "cough" in symptoms:
+            return "Cough triggered the medium-urgency recommendation."
+
+    return "No higher-priority triage rule was triggered."
+
+
+def build_decision_comparison(
+    ai_urgency,
+    ai_next_step,
+    human_urgency,
+    human_next_step,
+):
+    """Build a structured AI vs human decision comparison."""
+
+    comparison = compare_human_decision(
+        ai_urgency,
+        ai_next_step,
+        human_urgency,
+        human_next_step,
+    )
+
+    return {
+        "aiDecision": {
+            "urgency": ai_urgency,
+            "nextStep": ai_next_step,
+        },
+        "humanDecision": {
+            "urgency": human_urgency,
+            "nextStep": human_next_step,
+        },
+        "comparison": comparison,
+    }
+
+def build_triage_timeline():
+    """Build the sequence of events for the current AI triage process."""
+
+    return [
+        {
+            "event": "triage_received",
+            "description": "Patient symptoms and supported vital information received.",
+        },
+        {
+            "event": "ai_assessment",
+            "description": "Deterministic triage rules were evaluated.",
+        },
+        {
+            "event": "ai_recommendation",
+            "description": "AI recommendation generated.",
+        },
+    ]
+
+def build_risk_trend(assessment_history):
+    """Convert existing assessment history into a visualization-friendly trend."""
+
+    trend = []
+
+    for index, assessment in enumerate(assessment_history, start=1):
+        trend.append({
+            "assessment": index,
+            "urgency": assessment,
+        })
+
+    return trend
+
+def get_follow_up_priority(urgency):
+    """Derive a qualitative follow-up priority from the existing urgency."""
+
+    if urgency in ("emergency", "high"):
+        return {
+            "priority": "urgent",
+            "reason": "The current triage urgency requires priority follow-up."
+        }
+
+    if urgency == "medium":
+        return {
+            "priority": "priority",
+            "reason": "The current triage urgency indicates priority follow-up."
+        }
+
+    return {
+        "priority": "routine",
+        "reason": "The current triage urgency indicates routine follow-up."
+    }

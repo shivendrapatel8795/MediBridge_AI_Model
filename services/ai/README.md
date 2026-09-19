@@ -7,6 +7,11 @@ It receives patient symptoms and basic vital signs from the frontline worker app
 - urgency level
 - recommended next step
 - short non-diagnostic reason
+- missing information
+- triggered rules
+- risk factors
+- audit information
+- uncertainty indicator
 - AI-only flag
 - safety disclaimer
 

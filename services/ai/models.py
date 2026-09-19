@@ -32,6 +32,51 @@ class TriageRequest(BaseModel):
     vitals: Vitals
 
 
+class AuditInfo(BaseModel):
+    service: str
+    ruleVersion: str
+    aiOnly: bool
+
+
+class UncertaintyInfo(BaseModel):
+    level: Literal[
+        "low",
+        "medium",
+        "high",
+    ]
+    reason: str
+
+class ExplanationInfo(BaseModel):
+    summary: str
+    triggeredRules: List[str]
+    riskFactors: List[str]
+
+class DecisionInfo(BaseModel):
+    urgency: Urgency
+    nextStep: NextStep
+
+
+class DecisionComparison(BaseModel):
+    aiDecision: DecisionInfo
+    humanDecision: DecisionInfo
+    comparison: dict
+
+class TimelineEvent(BaseModel):
+    event: str
+    description: str
+
+class RiskTrendPoint(BaseModel):
+    assessment: int
+    urgency: Urgency
+
+class FollowUpInfo(BaseModel):
+    priority: Literal[
+        "routine",
+        "priority",
+        "urgent",
+    ]
+    reason: str
+
 class TriageResponse(BaseModel):
     patientId: str
     urgency: Urgency
@@ -40,5 +85,15 @@ class TriageResponse(BaseModel):
     missingInformation: List[str]
     triggeredRules: List[str]
     riskFactors: List[str]
+    audit: AuditInfo
+    uncertainty: UncertaintyInfo
+    explanation: ExplanationInfo
+    timeline: List[TimelineEvent]
+    riskTrend: List[RiskTrendPoint]
+    followUp: FollowUpInfo
     aiOnly: bool
     disclaimer: str
+
+class ErrorResponse(BaseModel):
+    error: str
+    details: List[str]
